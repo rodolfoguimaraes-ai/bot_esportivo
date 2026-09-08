@@ -19,6 +19,7 @@ URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
 
 print("📌 Bot Pré-Live Iniciado com Servidor Web para a Render!")
 
+# --- SERVIDOR WEB AUXILIAR REVISADO PARA CORRIGIR O TRAVAMENTO DA RENDER ---
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -26,16 +27,16 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Bot is running successfully!")
 
-def iniciar_servidor_web():
-    port = int(os.getenv("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), WebServerHandler)
-    print(f"🌍 Servidor Web de suporte ativo na porta {port}")
-    server.serve_forever()
+    def do_HEAD(self):
+        # Responde corretamente aos testes de saúde (ping) da Render para não travar o bot
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+# --------------------------------------------------------------------------
 
 def limpar_fila_telegram():
     print("🧹 Limpando mensagens antigas travadas na fila do Telegram...")
     try:
-        # Força o offset para -1 para descartar tudo o que foi enviado antes do bot ligar
         url = f"{URL_BASE}/getUpdates?offset=-1"
         requests.get(url, timeout=10)
         print("✅ Fila do Telegram limpa com sucesso!")
@@ -130,12 +131,9 @@ def executar_bot():
         time.sleep(1)
 
 if __name__ == '__main__':
-    # 1. Limpa o histórico travado do Telegram antes de começar
     limpar_fila_telegram()
     
-    # 2. Inicia o servidor HTTP para a Render manter o serviço ativo
     t = threading.Thread(target=iniciar_servidor_web, daemon=True)
     t.start()
     
-    # 3. Inicia o bot
     executar_bot()
