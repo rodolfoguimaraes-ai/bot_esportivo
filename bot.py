@@ -15,11 +15,11 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
+# MONTADO DE FORMA FIXA E BLINDADA: Não tem como dar erro de link grudado
+URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 print("📌 Bot Pré-Live Iniciado com Servidor Web para a Render!")
 
-# --- SERVIDOR WEB AUXILIAR REVISADO PARA CORRIGIR O TRAVAMENTO DA RENDER ---
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -28,11 +28,15 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"Bot is running successfully!")
 
     def do_HEAD(self):
-        # Responde corretamente aos testes de saúde (ping) da Render para não travar o bot
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-# --------------------------------------------------------------------------
+
+def iniciar_servidor_web():
+    port = int(os.getenv("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), WebServerHandler)
+    print(f"🌍 Servidor Web de suporte ativo na porta {port}")
+    server.serve_forever()
 
 def limpar_fila_telegram():
     print("🧹 Limpando mensagens antigas travadas na fila do Telegram...")
@@ -133,6 +137,7 @@ def executar_bot():
 if __name__ == '__main__':
     limpar_fila_telegram()
     
+    # Executa a função perfeitamente alinhada
     t = threading.Thread(target=iniciar_servidor_web, daemon=True)
     t.start()
     
