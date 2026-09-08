@@ -1,6 +1,7 @@
 import os
 import time
 import requests
+import base64
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from openai import OpenAI
@@ -16,7 +17,7 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-print("📌 Bot Pré-Live Iniciado com Modo de Compatibilidade OpenAI Atualizado!")
+print("📌 Bot Pré-Live Iniciado com Análise Avançada de Mercados!")
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -67,35 +68,61 @@ def enviar_mensagem(chat_id, texto):
 
 def processar_foto(chat_id, file_id):
     try:
-        enviar_mensagem(chat_id, "📸 Print recebido! Analisando mercado e buscando dados com segurança. O resultado sairá no canal...")
+        enviar_mensagem(chat_id, "📸 Print recebido! Analisando profundamente as equipes e buscando melhores mercados alternativos...")
 
         url_file = f"{URL_BASE}/getFile?file_id={file_id}"
         res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
             file_path = res_file["result"]["file_path"]
-            
-            prompt_analise = (
-                "Você é um analista estatístico esportivo profissional especializado em pré-live.\n"
-                "Gere uma análise padrão detalhada de gestão de banca, valor de odd e probabilidade estatística para o mercado enviado.\n"
-                "Inclua os tópicos: 📋 Evento, 🎯 Mercado Recomendado, 📈 Odd de Valor Encontrada e 🧠 Justificativa da Entrada."
-            )
+            url_download = f"https://telegram.org{TELEGRAM_TOKEN}/{file_path}"
+            response_foto = requests.get(url_download, timeout=15)
 
-            # Requisição segura à OpenAI
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": prompt_analise},
-                    {"role": "user", "content": "Gere uma análise esportiva profissional completa para o mercado pré-live atual com base em gestão de banca de 1% a 2% da stake."}
-                ]
-            )
+            if response_foto.status_code == 200:
+                # Converte o print real para processamento visual da IA
+                foto_base64 = base64.b64encode(response_foto.content).decode("utf-8")
 
-            # EXTRAÇÃO CORRIGIDA SEGUNDO A DOCUMENTAÇÃO ATUAL DA OPENAI
-            analise_final = response.choices[0].message.content
-            
-            # Envia para o seu canal privado
-            enviar_mensagem(CHANNEL_ID, analise_final)
-            enviar_mensagem(chat_id, "✅ Análise profissional publicada com sucesso no canal privado!")
+                # PROMPT AVANÇADO: Força a busca por escanteios, asiáticos e valor real
+                prompt_sistema = (
+                    "Você é um analista estatístico e tipster esportivo profissional sênior.\n"
+                    "Sua função é identificar os times presentes no print enviado e estruturar um palpite de alto valor.\n\n"
+                    "REGRAS DA ANÁLISE:\n"
+                    "1. Identifique o Evento (Times/Campeonato).\n"
+                    "2. Não se limite ao mercado simples de vitória (1X2) mostrado na imagem se as odds estiverem esmagadas. Busque sempre sugerir cenários de maior valor estatístico, PRIORIZANDO:\n"
+                    "   - Mercados Asiáticos (Handicaps Asiáticos de Gols ou Linhas de proteção como AH 0.0 / DNB).\n"
+                    "   - Escanteios (Cantos Totais ou Cantos Asiáticos com base na postura ofensiva esperada).\n"
+                    "   - Gols / Ambas Marcam (BTTS) se houver forte tendência ofensiva/defensiva.\n"
+                    "3. Indique uma Gestão de Banca estrita (Recomende 1% ou 2% de stake baseado no risco).\n\n"
+                    "Formate a sua resposta final de forma muito elegante usando emojis, negritos e tópicos organizados para publicação em um canal VIP."
+                )
+
+                # Requisição multimídia completa enviando a imagem real do usuário
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": prompt_sistema},
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Analise os times e mercados deste print de aposta e gere o palpite avançado focado em valor (Asiáticos/Escanteios/Gols):"},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{foto_base64}"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                )
+
+                analise_final = response.choices[0].message.content
+                
+                # Envia o palpite estruturado para o canal privado
+                enviar_mensagem(CHANNEL_ID, analise_final)
+                enviar_mensagem(chat_id, "✅ Palpite de alto valor publicado no canal privado com sucesso!")
+            else:
+                enviar_mensagem(chat_id, f"❌ Erro ao baixar foto do Telegram (Status: {response_foto.status_code})")
         else:
             enviar_mensagem(chat_id, "❌ Erro ao obter link do arquivo.")
 
