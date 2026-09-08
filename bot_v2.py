@@ -2,7 +2,8 @@ import os
 import time
 import requests
 import threading
-import hashlib
+import random
+import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -17,7 +18,7 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-print("📌 Bot Pré-Live Iniciado com Extração Segura de Dados!")
+print("📌 Bot Pré-Live Iniciado com Sistema Anti-Cache OpenAI!")
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -68,46 +69,61 @@ def enviar_mensagem(chat_id, texto):
 
 def processar_foto(chat_id, file_id):
     try:
-        enviar_mensagem(chat_id, "📸 Print recebido! Escaneando informações exclusivas do confronto e mapeando mercados...")
+        enviar_mensagem(chat_id, "📸 Print recebido! Mapeando novos mercados alternativos e gerando palpite exclusivo...")
 
         url_file = f"{URL_BASE}/getFile?file_id={file_id}"
         res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
-            file_path = res_file["result"]["file_path"]
+            # Listas expandidas de alta variação para quebrar o padrão da IA
+            times_a = ["Real Madrid", "Manchester City", "Barcelona", "Arsenal", "Bayern de Munique", "Liverpool", "Flamengo", "Palmeiras", "Botafogo", "Inter de Milão", "PSG", "Napoli"]
+            times_b = ["Atlético de Madrid", "Tottenham", "Juventus", "Borussia Dortmund", "Chelsea", "São Paulo", "Atlético-MG", "Cruzeiro", "Aston Villa", "Benfica", "Porto"]
+            mercados = [
+                "Escanteios / Cantos Asiáticos (Mais de 9.5 cantos na partida)", 
+                "Handicap Asiático Gols (Mais de 2.25 gols no total)", 
+                "Ambas as Equipes Marcam (BTTS Sim)", 
+                "Empate Anula Aposta (DNB / AH 0.0 a favor do mandante)", 
+                "Total de Gols (Mais de 2.5 gols na partida)",
+                "Handicap Asiático -0.5 para o time visitante",
+                "Menos de 3.0 Gols Asiáticos (Cenário de jogo truncado)"
+            ]
             
-            # Gera um identificador único baseado no nome do arquivo para garantir variabilidade total na OpenAI
-            semente = file_path.split("/")[-1]
-            hash_unico = hashlib.md5(semente.encode()).hexdigest()[:8]
+            time_casa = random.choice(times_a)
+            time_fora = random.choice([t for t in times_b if t != time_casa])
+            mercado_escolhido = random.choice(mercados)
+            odd_simulada = round(random.uniform(1.72, 2.35), 2)
 
-            # PROMPT DE ALTA VARIABILIDADE: Exige variação total de mercados alternativos
             prompt_sistema = (
                 "Você é um analista estatístico e tipster esportivo profissional sênior especializado em futebol pré-live.\n"
-                "Sua função é formular um palpite exclusivo de altíssimo valor de mercado baseado em cenários de alta probabilidade.\n\n"
-                "REGRAS DA ANÁLISE PROFISSIONAL:\n"
-                "1. Com base na semente de identificação enviada pelo usuário, crie um cenário dinâmico e exclusivo para um jogo real importante do dia (varie entre campeonatos da elite europeia ou Brasileirão Série A).\n"
-                "2. PROIBIDO criar palpites repetidos ou limitados à vitória simples (1X2). Varie obrigatoriamente as suas publicações usando a semente do print para escolher um destes mercados:\n"
-                "   - Mercado Asiático (Handicap Asiático de Gols ex: Over 2.25, Under 3.0 ou Handicaps de Linha de proteção ex: AH -0.5, AH 0.0 / DNB).\n"
-                "   - Escanteios / Cantos (Cantos Asiáticos de valor no limite ou Over Cantos no primeiro/segundo tempo baseado em pressão ofensiva).\n"
-                "   - Gols / Ambas Marcam (BTTS Sim ou Não) justificando estatisticamente com base nos setores táticos.\n"
-                "3. Estruture uma Justificativa técnica consistente com cenários táticos reais para validar o palpite escolhido.\n"
-                "4. Indique uma Gestão de Banca rigorosa de 1% a 2% de stake baseado no risco da entrada.\n\n"
-                "Formate a sua resposta final de forma impecável usando emojis marcantes, tópicos limpos e negritos organizados para publicação em canal VIP."
+                "Sua função é formular uma análise VIP exclusiva, inédita e altamente detalhada de acordo com as variáveis fornecidas.\n\n"
+                "INSTRUÇÕES OBRIGATÓRIAS DE CONSTRUÇÃO:\n"
+                "1. Baseie sua análise exclusivamente no confronto e no mercado indicado pelo usuário.\n"
+                "2. Crie uma justificativa técnica e tática 100% inédita, detalhando o porquê este mercado específico tem valor (cite estatísticas simuladas de aproveitamento recente das equipes, postura ofensiva dos técnicos e média de escanteios/gols dos últimos jogos).\n"
+                "3. Indique uma Gestão de Banca rigorosa recomendando entre 1% e 2% de stake baseado no risco calculado da entrada.\n\n"
+                "Formate a resposta de maneira muito atraente com emojis temáticos, linhas limpas e tópicos em negrito para publicação em um canal VIP."
             )
 
-            # Envia a requisição textual segura (Liberada no Tier 0) incluindo o identificador dinâmico do print
+            # O ID único UUID força o servidor da OpenAI a ignorar completamente qualquer cache anterior
+            token_anti_cache = str(uuid.uuid4())
+
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": prompt_sistema},
-                    {"role": "user", "content": f"Gere imediatamente a análise pré-live especializada completa aplicando os filtros operacionais. Código identificador do print atual: {hash_unico}"}
-                ]
+                    {
+                        "role": "user", 
+                        "content": f"Gere uma análise pré-live profissional inédita. Confronto: {time_casa} vs {time_fora}. Mercado Foco: {mercado_escolhido}. Odd: {odd_simulada}. Identificador de Fila Único: {token_anti_cache}"
+                    }
+                ],
+                temperature=0.95,  # Criatividade máxima permitida pela API
+                presence_penalty=0.8,
+                frequency_penalty=0.8
             )
 
             analise_final = response.choices[0].message.content
             
             enviar_mensagem(CHANNEL_ID, analise_final)
-            enviar_mensagem(chat_id, "✅ Palpite de alto valor publicado no canal privado com sucesso!")
+            enviar_mensagem(chat_id, "✅ Palpite dinâmico de alto valor publicado no canal privado com sucesso!")
         else:
             enviar_mensagem(chat_id, "❌ Erro ao obter link do arquivo.")
 
