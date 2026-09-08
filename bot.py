@@ -16,7 +16,7 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-print("📌 Bot Pré-Live Iniciado com Análise Estruturada Segura!")
+print("📌 Bot Pré-Live Iniciado com Correção de Sintaxe da OpenAI!")
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -73,7 +73,6 @@ def processar_foto(chat_id, file_id):
         res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
-            # PROMPT AVANÇADO INTEGRADO: Exige escanteios, asiáticos e valor estatístico sem travar a imagem
             prompt_sistema = (
                 "Você é um analista estatístico e tipster esportivo profissional sênior especializado em pré-live.\n"
                 "Sua função é formular um palpite exemplar de altíssimo valor de mercado baseado em cenários de alta probabilidade.\n\n"
@@ -96,7 +95,8 @@ def processar_foto(chat_id, file_id):
                 ]
             )
 
-            analise_final = response.choices.message.content
+            # CORREÇÃO CRUCIAL AQUI: Adicionado [0] para extrair corretamente da lista da OpenAI
+            analise_final = response.choices[0].message.content
             
             enviar_mensagem(CHANNEL_ID, analise_final)
             enviar_mensagem(chat_id, "✅ Palpite de alto valor publicado no canal privado com sucesso!")
