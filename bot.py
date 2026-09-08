@@ -87,7 +87,7 @@ def processar_foto(chat_id, file_id):
                 )
 
                 response = openai_client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": prompt_sistema},
                         {
