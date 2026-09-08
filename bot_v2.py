@@ -1,9 +1,8 @@
 import os
 import time
 import requests
+import base64
 import threading
-import random
-import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -15,10 +14,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
+URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
 
-URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-
-print("📌 Bot Pré-Live Iniciado com Sistema Anti-Cache OpenAI!")
+print("📌 Bot Pré-Live Iniciado com Visão Computacional Corrigida!")
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -26,7 +24,6 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(b"Bot is running successfully!")
-
     def do_HEAD(self):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
@@ -69,61 +66,60 @@ def enviar_mensagem(chat_id, texto):
 
 def processar_foto(chat_id, file_id):
     try:
-        enviar_mensagem(chat_id, "📸 Print recebido! Mapeando novos mercados alternativos e gerando palpite exclusivo...")
+        enviar_mensagem(chat_id, "📸 Print recebido! Analisando visualmente os dados reais do confronto...")
 
         url_file = f"{URL_BASE}/getFile?file_id={file_id}"
         res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
-            # Listas expandidas de alta variação para quebrar o padrão da IA
-            times_a = ["Real Madrid", "Manchester City", "Barcelona", "Arsenal", "Bayern de Munique", "Liverpool", "Flamengo", "Palmeiras", "Botafogo", "Inter de Milão", "PSG", "Napoli"]
-            times_b = ["Atlético de Madrid", "Tottenham", "Juventus", "Borussia Dortmund", "Chelsea", "São Paulo", "Atlético-MG", "Cruzeiro", "Aston Villa", "Benfica", "Porto"]
-            mercados = [
-                "Escanteios / Cantos Asiáticos (Mais de 9.5 cantos na partida)", 
-                "Handicap Asiático Gols (Mais de 2.25 gols no total)", 
-                "Ambas as Equipes Marcam (BTTS Sim)", 
-                "Empate Anula Aposta (DNB / AH 0.0 a favor do mandante)", 
-                "Total de Gols (Mais de 2.5 gols na partida)",
-                "Handicap Asiático -0.5 para o time visitante",
-                "Menos de 3.0 Gols Asiáticos (Cenário de jogo truncado)"
-            ]
-            
-            time_casa = random.choice(times_a)
-            time_fora = random.choice([t for t in times_b if t != time_casa])
-            mercado_escolhido = random.choice(mercados)
-            odd_simulada = round(random.uniform(1.72, 2.35), 2)
+            file_path = res_file["result"]["file_path"]
+            url_download = f"https://telegram.org{TELEGRAM_TOKEN}/{file_path}"
+            response_foto = requests.get(url_download, timeout=15)
 
-            prompt_sistema = (
-                "Você é um analista estatístico e tipster esportivo profissional sênior especializado em futebol pré-live.\n"
-                "Sua função é formular uma análise VIP exclusiva, inédita e altamente detalhada de acordo com as variáveis fornecidas.\n\n"
-                "INSTRUÇÕES OBRIGATÓRIAS DE CONSTRUÇÃO:\n"
-                "1. Baseie sua análise exclusivamente no confronto e no mercado indicado pelo usuário.\n"
-                "2. Crie uma justificativa técnica e tática 100% inédita, detalhando o porquê este mercado específico tem valor (cite estatísticas simuladas de aproveitamento recente das equipes, postura ofensiva dos técnicos e média de escanteios/gols dos últimos jogos).\n"
-                "3. Indique uma Gestão de Banca rigorosa recomendando entre 1% e 2% de stake baseado no risco calculado da entrada.\n\n"
-                "Formate a resposta de maneira muito atraente com emojis temáticos, linhas limpas e tópicos em negrito para publicação em um canal VIP."
-            )
+            if response_foto.status_code == 200:
+                # Converte o print real para código Base64 para envio de imagem à OpenAI
+                foto_base64 = base64.b64encode(response_foto.content).decode("utf-8")
 
-            # O ID único UUID força o servidor da OpenAI a ignorar completamente qualquer cache anterior
-            token_anti_cache = str(uuid.uuid4())
+                prompt_sistema = (
+                    "Você é um analista estatístico e tipster esportivo profissional sênior.\n"
+                    "Sua única tarefa é ler o print real enviado pelo usuário e identificar os times e dados corretos.\n\n"
+                    "REGRAS DE LEITURA E ANÁLISE:\n"
+                    "1. Identifique com precisão absoluta o Evento real (quais são os dois times jogando na imagem).\n"
+                    "2. Leia o mercado e a odd sugerida no print. Com base estritamente nesses times reais da foto, sugira um palpite inteligente focado em mercados alternativos de alto valor:\n"
+                    "   - Mercado Asiático (Handicaps de Gols ou Linhas de proteção como AH 0.0 / DNB).\n"
+                    "   - Escanteios / Cantos (Cantos Asiáticos de valor ou Over Cantos no primeiro/segundo tempo).\n"
+                    "   - Gols / Ambas Marcam (BTTS Sim ou Não) justificando com base no estilo de jogo real dos dois times.\n"
+                    "3. Forneça uma breve Justificativa tática coerente baseada especificamente nas duas equipes da imagem.\n"
+                    "4. Indique uma Gestão de Banca de 1% a 2% de stake baseado no risco da entrada.\n\n"
+                    "Formate a resposta de maneira organizada com emojis, tópicos limpos e negritos para publicação em um canal VIP."
+                )
 
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": prompt_sistema},
-                    {
-                        "role": "user", 
-                        "content": f"Gere uma análise pré-live profissional inédita. Confronto: {time_casa} vs {time_fora}. Mercado Foco: {mercado_escolhido}. Odd: {odd_simulada}. Identificador de Fila Único: {token_anti_cache}"
-                    }
-                ],
-                temperature=0.95,  # Criatividade máxima permitida pela API
-                presence_penalty=0.8,
-                frequency_penalty=0.8
-            )
+                # Requisição multimodal legítima: envia a foto convertida em tempo real
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": prompt_sistema},
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Extraia os times reais e os dados contidos neste print e monte a análise:"},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{foto_base64}"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    temperature=0.4 # Temperatura mais baixa diminui a chance de a IA inventar dados ou misturar confrontos
+                )
 
-            analise_final = response.choices[0].message.content
-            
-            enviar_mensagem(CHANNEL_ID, analise_final)
-            enviar_mensagem(chat_id, "✅ Palpite dinâmico de alto valor publicado no canal privado com sucesso!")
+                analise_final = response.choices[0].message.content
+                enviar_mensagem(CHANNEL_ID, analise_final)
+                enviar_mensagem(chat_id, "✅ Palpite real publicado no canal privado com sucesso!")
+            else:
+                enviar_mensagem(chat_id, f"❌ Erro ao baixar foto do Telegram (Status: {response_foto.status_code})")
         else:
             enviar_mensagem(chat_id, "❌ Erro ao obter link do arquivo.")
 
@@ -150,8 +146,6 @@ def executar_bot():
 
 if __name__ == '__main__':
     limpar_fila_telegram()
-    
     t = threading.Thread(target=iniciar_servidor_web, daemon=True)
     t.start()
-    
     executar_bot()
