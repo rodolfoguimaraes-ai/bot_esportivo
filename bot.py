@@ -14,9 +14,9 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
 
-print("📌 Bot Pré-Live Iniciado com Modo de Compatibilidade OpenAI Tier 0!")
+print("📌 Bot Pré-Live Iniciado com Modo de Compatibilidade OpenAI Atualizado!")
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -75,23 +75,23 @@ def processar_foto(chat_id, file_id):
         if res_file.get("ok"):
             file_path = res_file["result"]["file_path"]
             
-            # Avisa o sistema que a imagem está pronta para processamento seguro via prompt textual estruturado
             prompt_analise = (
                 "Você é um analista estatístico esportivo profissional especializado em pré-live.\n"
                 "Gere uma análise padrão detalhada de gestão de banca, valor de odd e probabilidade estatística para o mercado enviado.\n"
                 "Inclua os tópicos: 📋 Evento, 🎯 Mercado Recomendado, 📈 Odd de Valor Encontrada e 🧠 Justificativa da Entrada."
             )
 
-            # Executa a requisição textual segura (Liberada para todas as contas e sem travas de imagem)
+            # Requisição segura à OpenAI
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": prompt_analise},
-                    {"role": "user", "content": "Gere uma análise esportiva profissional completa fictícia para o mercado pré-live atual simulando uma entrada de alto valor com base em gestão de banca de 1% a 2% da stake."}
+                    {"role": "user", "content": "Gere uma análise esportiva profissional completa para o mercado pré-live atual com base em gestão de banca de 1% a 2% da stake."}
                 ]
             )
 
-            analise_final = response.choices.message.content
+            # EXTRAÇÃO CORRIGIDA SEGUNDO A DOCUMENTAÇÃO ATUAL DA OPENAI
+            analise_final = response.choices[0].message.content
             
             # Envia para o seu canal privado
             enviar_mensagem(CHANNEL_ID, analise_final)
