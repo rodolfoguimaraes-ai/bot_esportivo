@@ -15,7 +15,6 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# MONTADO DE FORMA FIXA E BLINDADA: Não tem como dar erro de link grudado
 URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 print("📌 Bot Pré-Live Iniciado com Servidor Web para a Render!")
@@ -80,12 +79,14 @@ def processar_foto(chat_id, file_id):
             response_foto = requests.get(url_download, timeout=15)
 
             if response_foto.status_code == 200:
+                # Converte para Base64 puro
                 foto_base64 = base64.b64encode(response_foto.content).decode("utf-8")
 
                 prompt_sistema = (
-                    "Você é um analista esportivo profissional. Extraia o evento, mercado e odd e faça uma breve análise de valor."
+                    "Você é um analista esportivo profissional. Extraia o evento, mercado e odd do print e faça uma breve análise de valor."
                 )
 
+                # FORMATO DE VISÃO CORRIGIDO E PADRONIZADO DA OPENAI
                 response = openai_client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -93,7 +94,7 @@ def processar_foto(chat_id, file_id):
                         {
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": "Analise este print:"},
+                                {"type": "text", "text": "Analise esta imagem:"},
                                 {
                                     "type": "image_url",
                                     "image_url": {
@@ -106,18 +107,21 @@ def processar_foto(chat_id, file_id):
                 )
 
                 analise_final = response.choices.message.content
+                
+                # Tenta enviar para o canal
                 enviar_mensagem(CHANNEL_ID, analise_final)
                 enviar_mensagem(chat_id, "✅ Publicado com sucesso no canal!")
             else:
-                enviar_mensagem(chat_id, f"❌ Erro ao baixar foto (Status: {response_foto.status_code})")
+                enviar_mensagem(chat_id, f"❌ Erro ao baixar foto do Telegram (Status: {response_foto.status_code})")
         else:
             enviar_mensagem(chat_id, "❌ Erro ao obter link do arquivo.")
 
     except Exception as e:
-        print(f"Erro na OpenAI: {str(e)}")
-        enviar_mensagem(chat_id, f"❌ Erro de processamento na API: {str(e)}")
+        print(f"Erro Crítico na OpenAI: {str(e)}")
+        # AGORA O BOT TE AVISA SE A OPENAI REJEITAR
+        enviar_mensagem(chat_id, f"❌ Erro retornado pela OpenAI: {str(e)}")
 
-def executar_bot():
+def ejecutar_bot():
     last_update_id = None
     while True:
         updates = buscar_atualizacoes(last_update_id)
@@ -137,8 +141,7 @@ def executar_bot():
 if __name__ == '__main__':
     limpar_fila_telegram()
     
-    # Executa a função perfeitamente alinhada
     t = threading.Thread(target=iniciar_servidor_web, daemon=True)
     t.start()
     
-    executar_bot()
+    ejecutar_bot()
