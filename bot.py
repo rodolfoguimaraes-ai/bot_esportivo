@@ -14,7 +14,7 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
+URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 print("📌 Bot Pré-Live Iniciado com Modo de Compatibilidade OpenAI Atualizado!")
 
