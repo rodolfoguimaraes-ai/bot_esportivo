@@ -2,10 +2,12 @@ import os
 import time
 import requests
 import base64
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Carrega as variáveis do .env
+# Carrega as variáveis de ambiente local se houver arquivo
 load_dotenv("/home/Rsguimaraes/bot_esportivo/.env")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
@@ -15,35 +17,43 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 # Inicialização da OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Proxy Manual Forçado para Contas Gratuitas do PythonAnywhere
-proxies = {
-    'http': 'http://proxy.server:3128',
-    'https': 'http://proxy.server:3128'
-}
-
 URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
 
-print("📌 Bot Pré-Live Corrigido Iniciado via Proxy Manual Resistente!")
+print("📌 Bot Pré-Live Iniciado com Servidor Web para a Render!")
+
+# --- SERVIDOR WEB AUXILIAR PARA A PORTA DA RENDER ---
+class WebServerHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"Bot is running successfully!")
+
+def iniciar_servidor_web():
+    # A Render injeta automaticamente a porta necessária na variável PORT
+    port = int(os.getenv("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), WebServerHandler)
+    print(f"🌍 Servidor Web de suporte ativo na porta {port}")
+    server.serve_forever()
+# ------------------------------------------------------------
 
 def buscar_atualizacoes(offset=None):
     url = f"{URL_BASE}/getUpdates?timeout=30"
     if offset:
         url += f"&offset={offset}"
     try:
-        # Usa o proxy manual e reduz o timeout para não travar o loop se o servidor cair
-        response = requests.get(url, proxies=proxies, timeout=15)
+        response = requests.get(url, timeout=35)
         if response.status_code == 200:
             return response.json()
     except Exception as e:
-        print(f"⏳ Servidor do PythonAnywhere oscilou (Proxy 503/Timeout). Tentando novamente em 3s...")
-        time.sleep(3)
+        print(f"Erro ao buscar atualizações: {e}")
     return None
 
 def enviar_mensagem(chat_id, texto):
     url = f"{URL_BASE}/sendMessage"
     payload = {"chat_id": chat_id, "text": texto, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload, proxies=proxies, timeout=10)
+        requests.post(url, json=payload, timeout=10)
     except Exception as e:
         print(f"Erro ao enviar mensagem: {e}")
 
@@ -53,23 +63,24 @@ def processar_foto(chat_id, file_id):
 
         # Pega as informações do arquivo de foto no Telegram
         url_file = f"{URL_BASE}/getFile?file_id={file_id}"
-        res_file = requests.get(url_file, proxies=proxies, timeout=10).json()
+        res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
             file_path = res_file["result"]["file_path"]
 
             # URL oficial de download
             url_download = f"https://telegram.org{TELEGRAM_TOKEN}/{file_path}"
-            response_foto = requests.get(url_download, proxies=proxies, timeout=15)
+            response_foto = requests.get(url_download, timeout=15)
 
             if response_foto.status_code == 200:
                 # Converte para Base64 de forma segura
                 foto_base64 = base64.b64encode(response_foto.content).decode("utf-8")
 
                 prompt_sistema = (
-                    "Você é um analista esportivo profissional. Extraia o evento, mercado e odd e faça uma breve análise."
+                    "Você é um analista esportivo profissional. Extraia o evento, mercado e odd e faça uma breve análise de valor."
                 )
 
+                # CHAMADA DA API CORRIGIDA INTEGRALMENTE
                 response = openai_client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -98,9 +109,10 @@ def processar_foto(chat_id, file_id):
             enviar_mensagem(chat_id, "❌ Erro ao obter link do arquivo.")
 
     except Exception as e:
-        enviar_mensagem(chat_id, f"❌ Erro de processamento: {str(e)}")
+        print(f"Erro na OpenAI: {str(e)}")
+        enviar_mensagem(chat_id, f"❌ Erro de processamento na API: {str(e)}")
 
-def ejecutar_bot():
+def executar_bot():
     last_update_id = None
     while True:
         updates = buscar_atualizacoes(last_update_id)
@@ -118,4 +130,9 @@ def ejecutar_bot():
         time.sleep(1)
 
 if __name__ == '__main__':
-    ejecutar_bot()
+    # Inicia o servidor HTTP em segundo plano para a Render manter o serviço ativo
+    t = threading.Thread(target=iniciar_servidor_web, daemon=True)
+    t.start()
+    
+    # Inicia a execução principal do bot do Telegram
+    executar_bot()
