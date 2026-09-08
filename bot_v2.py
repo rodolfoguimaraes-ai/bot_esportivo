@@ -73,7 +73,7 @@ def processar_foto(chat_id, file_id):
 
         if res_file.get("ok"):
             file_path = res_file["result"]["file_path"]
-            url_download = f"https://telegram.org{TELEGRAM_TOKEN}/{file_path}"
+            url_download = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/{file_path}"
             response_foto = requests.get(url_download, timeout=15)
 
             if response_foto.status_code == 200:
