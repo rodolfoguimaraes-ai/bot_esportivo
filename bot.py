@@ -8,7 +8,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 # Carrega as variáveis de ambiente local se houver arquivo
-load_dotenv("/home/Rsguimaraes/bot_esportivo/.env")
+load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
@@ -17,7 +17,7 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 # Inicialização da OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
+URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 print("📌 Bot Pré-Live Iniciado com Servidor Web para a Render!")
 
