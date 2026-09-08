@@ -7,21 +7,18 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Carrega as variáveis de ambiente local se houver arquivo
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
-# Inicialização da OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
 
 print("📌 Bot Pré-Live Iniciado com Servidor Web para a Render!")
 
-# --- SERVIDOR WEB AUXILIAR PARA A PORTA DA RENDER ---
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -30,12 +27,20 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"Bot is running successfully!")
 
 def iniciar_servidor_web():
-    # A Render injeta automaticamente a porta necessária na variável PORT
     port = int(os.getenv("PORT", 8080))
     server = HTTPServer(("0.0.0.0", port), WebServerHandler)
     print(f"🌍 Servidor Web de suporte ativo na porta {port}")
     server.serve_forever()
-# ------------------------------------------------------------
+
+def limpar_fila_telegram():
+    print("🧹 Limpando mensagens antigas travadas na fila do Telegram...")
+    try:
+        # Força o offset para -1 para descartar tudo o que foi enviado antes do bot ligar
+        url = f"{URL_BASE}/getUpdates?offset=-1"
+        requests.get(url, timeout=10)
+        print("✅ Fila do Telegram limpa com sucesso!")
+    except Exception as e:
+        print(f"Erro ao limpar fila: {e}")
 
 def buscar_atualizacoes(offset=None):
     url = f"{URL_BASE}/getUpdates?timeout=30"
@@ -61,26 +66,21 @@ def processar_foto(chat_id, file_id):
     try:
         enviar_mensagem(chat_id, "📸 Print recebido! Analisando mercado e buscando dados. O resultado sairá no canal...")
 
-        # Pega as informações do arquivo de foto no Telegram
         url_file = f"{URL_BASE}/getFile?file_id={file_id}"
         res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
             file_path = res_file["result"]["file_path"]
-
-            # URL oficial de download
             url_download = f"https://telegram.org{TELEGRAM_TOKEN}/{file_path}"
             response_foto = requests.get(url_download, timeout=15)
 
             if response_foto.status_code == 200:
-                # Converte para Base64 de forma segura
                 foto_base64 = base64.b64encode(response_foto.content).decode("utf-8")
 
                 prompt_sistema = (
                     "Você é um analista esportivo profissional. Extraia o evento, mercado e odd e faça uma breve análise de valor."
                 )
 
-                # CHAMADA DA API CORRIGIDA INTEGRALMENTE
                 response = openai_client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -130,9 +130,12 @@ def executar_bot():
         time.sleep(1)
 
 if __name__ == '__main__':
-    # Inicia o servidor HTTP em segundo plano para a Render manter o serviço ativo
+    # 1. Limpa o histórico travado do Telegram antes de começar
+    limpar_fila_telegram()
+    
+    # 2. Inicia o servidor HTTP para a Render manter o serviço ativo
     t = threading.Thread(target=iniciar_servidor_web, daemon=True)
     t.start()
     
-    # Inicia a execução principal do bot do Telegram
+    # 3. Inicia o bot
     executar_bot()
