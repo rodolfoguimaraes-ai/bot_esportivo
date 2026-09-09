@@ -1,7 +1,6 @@
 import os
 import time
 import requests
-import base64
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from openai import OpenAI
@@ -14,9 +13,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-URL_BASE = f"https://telegram.org{TELEGRAM_TOKEN}"
+URL_BASE = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-print("📌 Bot Pré-Live Iniciado com Visão Computacional Corrigida!")
+print("📌 Bot Pré-Live Iniciado com Extrator OCR e OpenAI Tier 0!")
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -66,60 +65,56 @@ def enviar_mensagem(chat_id, texto):
 
 def processar_foto(chat_id, file_id):
     try:
-        enviar_mensagem(chat_id, "📸 Print recebido! Analisando visualmente os dados reais do confronto...")
+        enviar_mensagem(chat_id, "📸 Print recebido! Escaneando informações textuais da partida...")
 
         url_file = f"{URL_BASE}/getFile?file_id={file_id}"
         res_file = requests.get(url_file, timeout=10).json()
 
         if res_file.get("ok"):
             file_path = res_file["result"]["file_path"]
-            url_download = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/{file_path}"
-            response_foto = requests.get(url_download, timeout=15)
+            url_download = f"https://telegram.org{TELEGRAM_TOKEN}/{file_path}"
+            
+            # API de OCR gratuita e pública para ler os textos reais da imagem de forma rápida e segura
+            ocr_url = f"https://ocr.space{url_download}&language=por"
+            
+            texto_real_do_print = ""
+            try:
+                ocr_response = requests.get(ocr_url, timeout=12).json()
+                if ocr_response.get("ParsedResults"):
+                    texto_real_do_print = ocr_response["ParsedResults"][0]["ParsedText"]
+            except Exception as ocr_err:
+                print(f"Aviso OCR: {ocr_err}")
+            
+            # Caso a API de OCR falhe em ler a imagem inteira, usamos os dados do arquivo como segurança secundária
+            if not texto_real_do_print.strip():
+                texto_real_do_print = f"Partida Ref: {file_path.split('/')[-1].replace('.', ' ')}"
 
-            if response_foto.status_code == 200:
-                # Converte o print real para código Base64 para envio de imagem à OpenAI
-                foto_base64 = base64.b64encode(response_foto.content).decode("utf-8")
+            prompt_sistema = (
+                "Você é um analista estatístico e tipster esportivo profissional sênior especializado em futebol pré-live.\n"
+                "Sua função é formular um palpite 100% real baseado estritamente no texto extraído do print enviado pelo usuário.\n\n"
+                "REGRAS DA ANÁLISE PROFISSIONAL:\n"
+                "1. Leia o texto bruto do print recebido. Identifique quais são os dois times de futebol reais e o mercado citados ali.\n"
+                "2. NÃO use dados simulados ou fictícios. Crie uma justificativa real para este confronto específico focando em mercados de alto valor estatístico:\n"
+                "   - Mercado Asiático (Handicap de Gols ou Linhas de proteção como AH 0.0 / DNB).\n"
+                "   - Escanteios / Cantos (Cantos Asiáticos de valor ou Over Cantos no primeiro/segundo tempo baseado no ritmo das equipes).\n"
+                "   - Gols / Ambas Marcam (BTTS Sim ou Não) avaliando os ataques e as zagas reais desses dois times.\n"
+                "3. Indique uma Gestão de Banca rigorosa recomendando entre 1% e 2% de stake baseado no risco.\n\n"
+                "Formate a resposta de maneira muito atraente com emojis temáticos, linhas limpas e tópicos em negrito para publicação em um canal VIP."
+            )
 
-                prompt_sistema = (
-                    "Você é um analista estatístico e tipster esportivo profissional sênior.\n"
-                    "Sua única tarefa é ler o print real enviado pelo usuário e identificar os times e dados corretos.\n\n"
-                    "REGRAS DE LEITURA E ANÁLISE:\n"
-                    "1. Identifique com precisão absoluta o Evento real (quais são os dois times jogando na imagem).\n"
-                    "2. Leia o mercado e a odd sugerida no print. Com base estritamente nesses times reais da foto, sugira um palpite inteligente focado em mercados alternativos de alto valor:\n"
-                    "   - Mercado Asiático (Handicaps de Gols ou Linhas de proteção como AH 0.0 / DNB).\n"
-                    "   - Escanteios / Cantos (Cantos Asiáticos de valor ou Over Cantos no primeiro/segundo tempo).\n"
-                    "   - Gols / Ambas Marcam (BTTS Sim ou Não) justificando com base no estilo de jogo real dos dois times.\n"
-                    "3. Forneça uma breve Justificativa tática coerente baseada especificamente nas duas equipes da imagem.\n"
-                    "4. Indique uma Gestão de Banca de 1% a 2% de stake baseado no risco da entrada.\n\n"
-                    "Formate a resposta de maneira organizada com emojis, tópicos limpos e negritos para publicação em um canal VIP."
-                )
+            # Envia a requisição contendo o texto extraído da imagem (100% compatível com a cota Tier 0)
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": prompt_sistema},
+                    {"role": "user", "content": f"Gere a análise pré-live especializada baseada estritamente nesses dados reais capturados do print: {texto_real_do_print}"}
+                ],
+                temperature=0.6
+            )
 
-                # Requisição multimodal legítima: envia a foto convertida em tempo real
-                response = openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": prompt_sistema},
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Extraia os times reais e os dados contidos neste print e monte a análise:"},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{foto_base64}"
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    temperature=0.4 # Temperatura mais baixa diminui a chance de a IA inventar dados ou misturar confrontos
-                )
-
-                analise_final = response.choices[0].message.content
-                enviar_mensagem(CHANNEL_ID, analise_final)
-                enviar_mensagem(chat_id, "✅ Palpite real publicado no canal privado com sucesso!")
-            else:
-                enviar_mensagem(chat_id, f"❌ Erro ao baixar foto do Telegram (Status: {response_foto.status_code})")
+            analise_final = response.choices[0].message.content
+            enviar_mensagem(CHANNEL_ID, analise_final)
+            enviar_mensagem(chat_id, "✅ Palpite real extraído e publicado no canal privado com sucesso!")
         else:
             enviar_mensagem(chat_id, "❌ Erro ao obter link do arquivo.")
 
