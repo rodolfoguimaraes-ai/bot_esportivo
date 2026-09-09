@@ -91,7 +91,9 @@ def processar_foto(chat_id, legenda_texto):
             temperature=0.8
         )
 
-        analise_final = response.choices.message.content
+        # CORREÇÃO CRUCIAL DA API AQUI: Adicionado [0] para extrair corretamente da lista
+        analise_final = response.choices[0].message.content
+        
         enviar_mensagem(CHANNEL_ID, analise_final)
         enviar_mensagem(chat_id, "✅ Palpite gerado dinamicamente e publicado no canal com sucesso!")
 
