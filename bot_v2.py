@@ -403,8 +403,6 @@ def processar_foto(chat_id, legenda_texto):
 "59. OBJETIVO OPERACIONAL FINAL:\n"
 "O objetivo NÃO é produzir a maior quantidade possível de apostas.\n"
 "O objetivo é analisar integralmente todos os confrontos enviados, localizar discrepâncias reais entre probabilidade e preço, selecionar somente mercados justificáveis e construir uma carteira de Simples, Duplas e Triplas tecnicamente defensável, diversificada e baseada em valor esperado positivo.\n"
-
-
 "FORMATO DE SAÍDA (Publicação Direta no Canal VIP):\n"
 "Utilize exatamente a estrutura abaixo, sem saudações, introduções ou conversas paralelas.\n\n"
 "🚨 **ANÁLISES TÉCNICAS DA RODADA** 🚨\n\n"
