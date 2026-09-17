@@ -957,7 +957,6 @@ def processar_foto(chat_id, legenda_texto):
 "============================================================"
 "FIM DO SYSTEM QUANTUM SPORTS ANALYTICS"
 "============================================================"
-```
         )
 
         response = openai_client.chat.completions.create(
