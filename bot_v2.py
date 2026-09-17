@@ -72,7 +72,6 @@ def processar_foto(chat_id, legenda_texto):
             legenda_texto = "Confronto importante do dia na Série A"
 
         prompt_sistema = (
-           ```text
 "============================================================"
 "SYSTEM QUANTUM SPORTS ANALYTICS"
 "ENGINE PROFISSIONAL MULTIMERCADO — BET365"
